@@ -9,6 +9,10 @@ from docx import Document
 from word_document_server.utils.file_utils import check_file_writeable, ensure_docx_extension, create_document_copy
 from word_document_server.utils.document_utils import get_document_properties, extract_document_text, get_document_structure, get_document_xml, insert_header_near_text, insert_line_or_paragraph_near_text
 from word_document_server.core.styles import ensure_heading_style, ensure_table_style
+from word_document_server.utils.track_changes_utils import (
+    open_document_with_track_changes, close_document_with_track_changes,
+    check_pywin32_available, get_track_changes_error_message
+)
 
 
 async def create_document(filename: str, title: Optional[str] = None, author: Optional[str] = None) -> str:
@@ -133,13 +137,16 @@ async def copy_document(source_filename: str, destination_filename: Optional[str
         return f"Failed to copy document: {message}"
 
 
-async def merge_documents(target_filename: str, source_filenames: List[str], add_page_breaks: bool = True) -> str:
+async def merge_documents(target_filename: str, source_filenames: List[str], add_page_breaks: bool = True,
+                          track_changes: bool = False, change_author: str = "") -> str:
     """Merge multiple Word documents into a single document.
     
     Args:
         target_filename: Path to the target document (will be created or overwritten)
         source_filenames: List of paths to source documents to merge
         add_page_breaks: If True, add page breaks between documents
+        track_changes: If True, changes will be tracked as revisions
+        change_author: Author name for tracked changes (required if track_changes=True)
     """
     from word_document_server.core.tables import copy_table
     
@@ -159,6 +166,63 @@ async def merge_documents(target_filename: str, source_filenames: List[str], add
     
     if missing_files:
         return f"Cannot merge documents. The following source files do not exist: {', '.join(missing_files)}"
+
+    # Check if Track Changes is requested
+    if track_changes:
+        if not check_pywin32_available():
+            return get_track_changes_error_message()
+        
+        try:
+            import win32com.client
+            word = win32com.client.Dispatch("Word.Application")
+            word.Visible = False
+            
+            # Create or open target document
+            abs_target = os.path.abspath(target_filename)
+            if os.path.exists(abs_target):
+                target_doc = word.Documents.Open(abs_target)
+            else:
+                # Create new document
+                target_doc = word.Documents.Add()
+            
+            # Enable Track Changes
+            target_doc.TrackRevisions = True
+            if change_author:
+                word.UserName = change_author
+            
+            # Process each source document
+            for i, filename in enumerate(source_filenames):
+                doc_filename = ensure_docx_extension(filename)
+                abs_source = os.path.abspath(doc_filename)
+                
+                # Add page break between documents (except before the first one)
+                if add_page_breaks and i > 0:
+                    range_obj = target_doc.Range()
+                    range_obj.Collapse(0)  # wdCollapseEnd
+                    range_obj.InsertBreak(7)  # wdPageBreak
+                
+                # Insert source document content
+                source_doc = word.Documents.Open(abs_source)
+                source_doc.Content.Copy()
+                source_doc.Close(SaveChanges=False)
+                
+                # Paste into target document
+                range_obj = target_doc.Range()
+                range_obj.Collapse(0)  # wdCollapseEnd
+                range_obj.Paste()
+            
+            # Save and close
+            target_doc.SaveAs(abs_target)
+            target_doc.Close()
+            word.Quit()
+            
+            return f"Successfully merged {len(source_filenames)} documents into {target_filename} with Track Changes"
+        except Exception as e:
+            try:
+                word.Quit()
+            except:
+                pass
+            return f"Failed to merge documents with Track Changes: {str(e)}"
     
     try:
         # Create a new document for the merged result

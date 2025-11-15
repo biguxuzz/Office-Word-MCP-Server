@@ -179,7 +179,8 @@ def register_tools():
         return document_tools.get_document_xml_tool(filename)
     
     @mcp.tool()
-    def insert_header_near_text(filename: str, target_text: str = None, header_title: str = None, position: str = 'after', header_style: str = 'Heading 1', target_paragraph_index: int = None):
+    def insert_header_near_text(filename: str, target_text: str = None, header_title: str = None, position: str = 'after', header_style: str = 'Heading 1', target_paragraph_index: int = None,
+                                track_changes: bool = False, change_author: str = ""):
         """Insert a header (with specified style) before or after the target paragraph.
         
         Args:
@@ -189,14 +190,17 @@ def register_tools():
             position: Position relative to target ('before' or 'after', default: 'after')
             header_style: Style name for the header (default: 'Heading 1')
             target_paragraph_index: Index of the target paragraph (optional, alternative to target_text)
+            track_changes: If True, changes will be tracked as revisions
+            change_author: Author name for tracked changes (required if track_changes=True)
             
         Returns:
             Status message indicating success or failure
         """
-        return content_tools.insert_header_near_text_tool(filename, target_text, header_title, position, header_style, target_paragraph_index)
+        return content_tools.insert_header_near_text_tool(filename, target_text, header_title, position, header_style, target_paragraph_index, track_changes, change_author)
     
     @mcp.tool()
-    def insert_line_or_paragraph_near_text(filename: str, target_text: str = None, line_text: str = None, position: str = 'after', line_style: str = None, target_paragraph_index: int = None):
+    def insert_line_or_paragraph_near_text(filename: str, target_text: str = None, line_text: str = None, position: str = 'after', line_style: str = None, target_paragraph_index: int = None,
+                                           track_changes: bool = False, change_author: str = ""):
         """Insert a new line or paragraph (with specified or matched style) before or after the target paragraph.
         
         Args:
@@ -206,14 +210,17 @@ def register_tools():
             position: Position relative to target ('before' or 'after', default: 'after')
             line_style: Style name for the new line (optional, will match target style if not provided)
             target_paragraph_index: Index of the target paragraph (optional, alternative to target_text)
+            track_changes: If True, changes will be tracked as revisions
+            change_author: Author name for tracked changes (required if track_changes=True)
             
         Returns:
             Status message indicating success or failure
         """
-        return content_tools.insert_line_or_paragraph_near_text_tool(filename, target_text, line_text, position, line_style, target_paragraph_index)
+        return content_tools.insert_line_or_paragraph_near_text_tool(filename, target_text, line_text, position, line_style, target_paragraph_index, track_changes, change_author)
     
     @mcp.tool()
-    def insert_numbered_list_near_text(filename: str, target_text: str = None, list_items: list = None, position: str = 'after', target_paragraph_index: int = None, bullet_type: str = 'bullet'):
+    def insert_numbered_list_near_text(filename: str, target_text: str = None, list_items: list = None, position: str = 'after', target_paragraph_index: int = None, bullet_type: str = 'bullet',
+                                       track_changes: bool = False, change_author: str = ""):
         """Insert a bulleted or numbered list before or after the target paragraph.
         
         Args:
@@ -223,16 +230,19 @@ def register_tools():
             position: Position relative to target ('before' or 'after', default: 'after')
             target_paragraph_index: Index of the target paragraph (optional, alternative to target_text)
             bullet_type: Type of list ('bullet' for bullets or 'number' for numbered lists, default: 'bullet')
+            track_changes: If True, changes will be tracked as revisions
+            change_author: Author name for tracked changes (required if track_changes=True)
             
         Returns:
             Status message indicating success or failure
         """
-        return content_tools.insert_numbered_list_near_text_tool(filename, target_text, list_items, position, target_paragraph_index, bullet_type)
+        return content_tools.insert_numbered_list_near_text_tool(filename, target_text, list_items, position, target_paragraph_index, bullet_type, track_changes, change_author)
     # Content tools (paragraphs, headings, tables, etc.)
     @mcp.tool()
     def add_paragraph(filename: str, text: str, style: str = None,
                       font_name: str = None, font_size: int = None,
-                      bold: bool = None, italic: bool = None, color: str = None):
+                      bold: bool = None, italic: bool = None, color: str = None,
+                      track_changes: bool = False, change_author: str = ""):
         """Add a paragraph to a Word document with optional formatting.
 
         Args:
@@ -244,13 +254,16 @@ def register_tools():
             bold: Make text bold
             italic: Make text italic
             color: Text color as hex RGB (e.g., '000000')
+            track_changes: If True, changes will be tracked as revisions
+            change_author: Author name for tracked changes (required if track_changes=True)
         """
-        return content_tools.add_paragraph(filename, text, style, font_name, font_size, bold, italic, color)
+        return content_tools.add_paragraph(filename, text, style, font_name, font_size, bold, italic, color, track_changes, change_author)
     
     @mcp.tool()
     def add_heading(filename: str, text: str, level: int = 1,
                     font_name: str = None, font_size: int = None,
-                    bold: bool = None, italic: bool = None, border_bottom: bool = False):
+                    bold: bool = None, italic: bool = None, border_bottom: bool = False,
+                    track_changes: bool = False, change_author: str = ""):
         """Add a heading to a Word document with optional formatting.
 
         Args:
@@ -262,25 +275,31 @@ def register_tools():
             bold: Make heading bold
             italic: Make heading italic
             border_bottom: Add bottom border (for section headers)
+            track_changes: If True, changes will be tracked as revisions
+            change_author: Author name for tracked changes (required if track_changes=True)
         """
-        return content_tools.add_heading(filename, text, level, font_name, font_size, bold, italic, border_bottom)
+        return content_tools.add_heading(filename, text, level, font_name, font_size, bold, italic, border_bottom, track_changes, change_author)
     
     @mcp.tool()
-    def add_picture(filename: str, image_path: str, width: float = None):
+    def add_picture(filename: str, image_path: str, width: float = None,
+                    track_changes: bool = False, change_author: str = ""):
         """Add an image to a Word document.
         
         Args:
             filename: Path to the Word document
             image_path: Path to the image file to insert
             width: Optional width for the image in points
+            track_changes: If True, changes will be tracked as revisions
+            change_author: Author name for tracked changes (required if track_changes=True)
             
         Returns:
             Status message indicating success or failure
         """
-        return content_tools.add_picture(filename, image_path, width)
+        return content_tools.add_picture(filename, image_path, width, track_changes, change_author)
     
     @mcp.tool()
-    def add_table(filename: str, rows: int, cols: int, data: list = None):
+    def add_table(filename: str, rows: int, cols: int, data: list = None,
+                  track_changes: bool = False, change_author: str = ""):
         """Add a table to a Word document.
         
         Args:
@@ -288,57 +307,82 @@ def register_tools():
             rows: Number of rows in the table
             cols: Number of columns in the table
             data: Optional list of lists containing table data (rows x cols)
+            track_changes: If True, changes will be tracked as revisions
+            change_author: Author name for tracked changes (required if track_changes=True)
             
         Returns:
             Status message indicating success or failure
         """
-        return content_tools.add_table(filename, rows, cols, data)
+        return content_tools.add_table(filename, rows, cols, data, track_changes, change_author)
     
     @mcp.tool()
-    def add_page_break(filename: str):
+    def add_page_break(filename: str, track_changes: bool = False, change_author: str = ""):
         """Add a page break to the document.
         
         Args:
             filename: Path to the Word document
+            track_changes: If True, changes will be tracked as revisions
+            change_author: Author name for tracked changes (required if track_changes=True)
             
         Returns:
             Status message indicating success or failure
         """
-        return content_tools.add_page_break(filename)
+        return content_tools.add_page_break(filename, track_changes, change_author)
     
     @mcp.tool()
-    def delete_paragraph(filename: str, paragraph_index: int):
+    def delete_paragraph(filename: str, paragraph_index: int,
+                         track_changes: bool = False, change_author: str = ""):
         """Delete a paragraph from a document.
         
         Args:
             filename: Path to the Word document
             paragraph_index: Index of the paragraph to delete (0-based)
+            track_changes: If True, changes will be tracked as revisions
+            change_author: Author name for tracked changes (required if track_changes=True)
             
         Returns:
             Status message indicating success or failure
         """
-        return content_tools.delete_paragraph(filename, paragraph_index)
+        return content_tools.delete_paragraph(filename, paragraph_index, track_changes, change_author)
     
     @mcp.tool()
-    def search_and_replace(filename: str, find_text: str, replace_text: str):
-        """Search for text and replace all occurrences.
+    def search_and_replace(filename: str, find_text: str, replace_text: str,
+                          track_changes: bool = False, change_author: str = "",
+                          occurrence_index: int = None, context_before: str = "", context_after: str = "",
+                          replace_all: bool = True):
+        """Search for text and replace all occurrences or a specific occurrence.
         
         Args:
             filename: Path to the Word document
             find_text: Text to search for
             replace_text: Text to replace with
+            track_changes: If True, changes will be tracked as revisions
+            change_author: Author name for tracked changes (required if track_changes=True)
+            occurrence_index: Optional index of specific occurrence to replace (1-based, e.g., 1 for first, 2 for second).
+                             If None, replaces all occurrences (or first occurrence if replace_all=False).
+            context_before: Optional text that should appear before the match (for precise identification)
+            context_after: Optional text that should appear after the match (for precise identification)
+            replace_all: If True, replace all occurrences. If False, replace only first occurrence (deprecated, use occurrence_index=1 instead).
+                        Ignored if occurrence_index is specified.
             
         Returns:
             Status message indicating success or failure, including number of replacements made
         """
-        return content_tools.search_and_replace(filename, find_text, replace_text)
+        # Handle replace_all for backward compatibility
+        # If replace_all=False and occurrence_index is not specified, replace only first occurrence
+        if not replace_all and occurrence_index is None:
+            occurrence_index = 1
+        
+        return content_tools.search_and_replace(filename, find_text, replace_text, track_changes, change_author,
+                                                occurrence_index, context_before, context_after)
     
     # Format tools (styling, text formatting, etc.)
     @mcp.tool()
     def create_custom_style(filename: str, style_name: str, bold: bool = None, 
                           italic: bool = None, font_size: int = None, 
                           font_name: str = None, color: str = None, 
-                          base_style: str = None):
+                          base_style: str = None,
+                          track_changes: bool = False, change_author: str = ""):
         """Create a custom style in the document.
         
         Args:
@@ -350,18 +394,21 @@ def register_tools():
             font_name: Font family name (optional)
             color: Text color as hex RGB (optional, e.g., '000000')
             base_style: Base style to inherit from (optional)
+            track_changes: If True, changes will be tracked as revisions
+            change_author: Author name for tracked changes (required if track_changes=True)
             
         Returns:
             Status message indicating success or failure
         """
         return format_tools.create_custom_style(
-            filename, style_name, bold, italic, font_size, font_name, color, base_style
+            filename, style_name, bold, italic, font_size, font_name, color, base_style, track_changes, change_author
         )
     
     @mcp.tool()
     def format_text(filename: str, paragraph_index: int, start_pos: int, end_pos: int,
                    bold: bool = None, italic: bool = None, underline: bool = None,
-                   color: str = None, font_size: int = None, font_name: str = None):
+                   color: str = None, font_size: int = None, font_name: str = None,
+                   track_changes: bool = False, change_author: str = ""):
         """Format a specific range of text within a paragraph.
         
         Args:
@@ -375,18 +422,21 @@ def register_tools():
             color: Text color as hex RGB (optional)
             font_size: Font size in points (optional)
             font_name: Font family name (optional)
+            track_changes: If True, changes will be tracked as revisions
+            change_author: Author name for tracked changes (required if track_changes=True)
             
         Returns:
             Status message indicating success or failure
         """
         return format_tools.format_text(
             filename, paragraph_index, start_pos, end_pos, bold, italic, 
-            underline, color, font_size, font_name
+            underline, color, font_size, font_name, track_changes, change_author
         )
     
     @mcp.tool()
     def format_table(filename: str, table_index: int, has_header_row: bool = None,
-                    border_style: str = None, shading: list = None):
+                    border_style: str = None, shading: list = None,
+                    track_changes: bool = False, change_author: str = ""):
         """Format a table with borders, shading, and structure.
         
         Args:
@@ -395,16 +445,19 @@ def register_tools():
             has_header_row: Whether the table has a header row (optional)
             border_style: Border style name (optional)
             shading: List of shading colors for rows (optional)
+            track_changes: If True, changes will be tracked as revisions
+            change_author: Author name for tracked changes (required if track_changes=True)
             
         Returns:
             Status message indicating success or failure
         """
-        return format_tools.format_table(filename, table_index, has_header_row, border_style, shading)
+        return format_tools.format_table(filename, table_index, has_header_row, border_style, shading, track_changes, change_author)
     
     # New table cell shading tools
     @mcp.tool()
     def set_table_cell_shading(filename: str, table_index: int, row_index: int, 
-                              col_index: int, fill_color: str, pattern: str = "clear"):
+                              col_index: int, fill_color: str, pattern: str = "clear",
+                              track_changes: bool = False, change_author: str = ""):
         """Apply shading/filling to a specific table cell.
         
         Args:
@@ -418,11 +471,12 @@ def register_tools():
         Returns:
             Status message indicating success or failure
         """
-        return format_tools.set_table_cell_shading(filename, table_index, row_index, col_index, fill_color, pattern)
+        return format_tools.set_table_cell_shading(filename, table_index, row_index, col_index, fill_color, pattern, track_changes, change_author)
     
     @mcp.tool()
     def apply_table_alternating_rows(filename: str, table_index: int, 
-                                   color1: str = "FFFFFF", color2: str = "F2F2F2"):
+                                   color1: str = "FFFFFF", color2: str = "F2F2F2",
+                                   track_changes: bool = False, change_author: str = ""):
         """Apply alternating row colors to a table for better readability.
         
         Args:
@@ -434,11 +488,12 @@ def register_tools():
         Returns:
             Status message indicating success or failure
         """
-        return format_tools.apply_table_alternating_rows(filename, table_index, color1, color2)
+        return format_tools.apply_table_alternating_rows(filename, table_index, color1, color2, track_changes, change_author)
     
     @mcp.tool()
     def highlight_table_header(filename: str, table_index: int, 
-                             header_color: str = "4472C4", text_color: str = "FFFFFF"):
+                             header_color: str = "4472C4", text_color: str = "FFFFFF",
+                             track_changes: bool = False, change_author: str = ""):
         """Apply special highlighting to table header row.
         
         Args:
@@ -450,12 +505,13 @@ def register_tools():
         Returns:
             Status message indicating success or failure
         """
-        return format_tools.highlight_table_header(filename, table_index, header_color, text_color)
+        return format_tools.highlight_table_header(filename, table_index, header_color, text_color, track_changes, change_author)
     
     # Cell merging tools
     @mcp.tool()
     def merge_table_cells(filename: str, table_index: int, start_row: int, start_col: int, 
-                        end_row: int, end_col: int):
+                        end_row: int, end_col: int,
+                        track_changes: bool = False, change_author: str = ""):
         """Merge cells in a rectangular area of a table.
         
         Args:
@@ -469,11 +525,12 @@ def register_tools():
         Returns:
             Status message indicating success or failure
         """
-        return format_tools.merge_table_cells(filename, table_index, start_row, start_col, end_row, end_col)
+        return format_tools.merge_table_cells(filename, table_index, start_row, start_col, end_row, end_col, track_changes, change_author)
     
     @mcp.tool()
     def merge_table_cells_horizontal(filename: str, table_index: int, row_index: int, 
-                                   start_col: int, end_col: int):
+                                   start_col: int, end_col: int,
+                                   track_changes: bool = False, change_author: str = ""):
         """Merge cells horizontally in a single row.
         
         Args:
@@ -486,11 +543,12 @@ def register_tools():
         Returns:
             Status message indicating success or failure
         """
-        return format_tools.merge_table_cells_horizontal(filename, table_index, row_index, start_col, end_col)
+        return format_tools.merge_table_cells_horizontal(filename, table_index, row_index, start_col, end_col, track_changes, change_author)
     
     @mcp.tool()
     def merge_table_cells_vertical(filename: str, table_index: int, col_index: int, 
-                                 start_row: int, end_row: int):
+                                 start_row: int, end_row: int,
+                                 track_changes: bool = False, change_author: str = ""):
         """Merge cells vertically in a single column.
         
         Args:
@@ -503,12 +561,13 @@ def register_tools():
         Returns:
             Status message indicating success or failure
         """
-        return format_tools.merge_table_cells_vertical(filename, table_index, col_index, start_row, end_row)
+        return format_tools.merge_table_cells_vertical(filename, table_index, col_index, start_row, end_row, track_changes, change_author)
     
     # Cell alignment tools
     @mcp.tool()
     def set_table_cell_alignment(filename: str, table_index: int, row_index: int, col_index: int,
-                               horizontal: str = "left", vertical: str = "top"):
+                               horizontal: str = "left", vertical: str = "top",
+                               track_changes: bool = False, change_author: str = ""):
         """Set text alignment for a specific table cell.
         
         Args:
@@ -522,11 +581,12 @@ def register_tools():
         Returns:
             Status message indicating success or failure
         """
-        return format_tools.set_table_cell_alignment(filename, table_index, row_index, col_index, horizontal, vertical)
+        return format_tools.set_table_cell_alignment(filename, table_index, row_index, col_index, horizontal, vertical, track_changes, change_author)
     
     @mcp.tool()
     def set_table_alignment_all(filename: str, table_index: int, 
-                              horizontal: str = "left", vertical: str = "top"):
+                              horizontal: str = "left", vertical: str = "top",
+                              track_changes: bool = False, change_author: str = ""):
         """Set text alignment for all cells in a table.
         
         Args:
@@ -538,7 +598,7 @@ def register_tools():
         Returns:
             Status message indicating success or failure
         """
-        return format_tools.set_table_alignment_all(filename, table_index, horizontal, vertical)
+        return format_tools.set_table_alignment_all(filename, table_index, horizontal, vertical, track_changes, change_author)
     
     # Protection tools
     @mcp.tool()
@@ -569,7 +629,8 @@ def register_tools():
     
     # Footnote tools
     @mcp.tool()
-    def add_footnote_to_document(filename: str, paragraph_index: int, footnote_text: str):
+    def add_footnote_to_document(filename: str, paragraph_index: int, footnote_text: str,
+                                 track_changes: bool = False, change_author: str = ""):
         """Add a footnote to a specific paragraph in a Word document.
         
         Args:
@@ -580,11 +641,12 @@ def register_tools():
         Returns:
             Status message indicating success or failure
         """
-        return footnote_tools.add_footnote_to_document(filename, paragraph_index, footnote_text)
+        return footnote_tools.add_footnote_to_document(filename, paragraph_index, footnote_text, track_changes, change_author)
     
     @mcp.tool()
     def add_footnote_after_text(filename: str, search_text: str, footnote_text: str, 
-                               output_filename: str = None):
+                               output_filename: str = None,
+                               track_changes: bool = False, change_author: str = ""):
         """Add a footnote after specific text with proper superscript formatting.
         
         Args:
@@ -596,11 +658,12 @@ def register_tools():
         Returns:
             Status message indicating success or failure
         """
-        return footnote_tools.add_footnote_after_text(filename, search_text, footnote_text, output_filename)
+        return footnote_tools.add_footnote_after_text(filename, search_text, footnote_text, output_filename, track_changes, change_author)
     
     @mcp.tool()
     def add_footnote_before_text(filename: str, search_text: str, footnote_text: str, 
-                                output_filename: str = None):
+                                output_filename: str = None,
+                                track_changes: bool = False, change_author: str = ""):
         """Add a footnote before specific text with proper superscript formatting.
         
         Args:
@@ -612,11 +675,12 @@ def register_tools():
         Returns:
             Status message indicating success or failure
         """
-        return footnote_tools.add_footnote_before_text(filename, search_text, footnote_text, output_filename)
+        return footnote_tools.add_footnote_before_text(filename, search_text, footnote_text, output_filename, track_changes, change_author)
     
     @mcp.tool()
     def add_footnote_enhanced(filename: str, paragraph_index: int, footnote_text: str,
-                             output_filename: str = None):
+                             output_filename: str = None,
+                             track_changes: bool = False, change_author: str = ""):
         """Enhanced footnote addition with guaranteed superscript formatting.
         
         Args:
@@ -628,26 +692,30 @@ def register_tools():
         Returns:
             Status message indicating success or failure
         """
-        return footnote_tools.add_footnote_enhanced(filename, paragraph_index, footnote_text, output_filename)
+        return footnote_tools.add_footnote_enhanced(filename, paragraph_index, footnote_text, output_filename, track_changes, change_author)
     
     @mcp.tool()
-    def add_endnote_to_document(filename: str, paragraph_index: int, endnote_text: str):
+    def add_endnote_to_document(filename: str, paragraph_index: int, endnote_text: str,
+                                 track_changes: bool = False, change_author: str = ""):
         """Add an endnote to a specific paragraph in a Word document.
         
         Args:
             filename: Path to the Word document
             paragraph_index: Index of the paragraph to add endnote to (0-based)
             endnote_text: Text content for the endnote
+            track_changes: If True, changes will be tracked as revisions
+            change_author: Author name for tracked changes (required if track_changes=True)
             
         Returns:
             Status message indicating success or failure
         """
-        return footnote_tools.add_endnote_to_document(filename, paragraph_index, endnote_text)
+        return footnote_tools.add_endnote_to_document(filename, paragraph_index, endnote_text, track_changes, change_author)
     
     @mcp.tool()
     def customize_footnote_style(filename: str, numbering_format: str = "1, 2, 3",
                                 start_number: int = 1, font_name: str = None,
-                                font_size: int = None):
+                                font_size: int = None,
+                                track_changes: bool = False, change_author: str = ""):
         """Customize footnote numbering and formatting in a Word document.
         
         Args:
@@ -656,17 +724,20 @@ def register_tools():
             start_number: Starting number for footnotes (default: 1)
             font_name: Font name for footnotes (optional)
             font_size: Font size for footnotes (optional)
+            track_changes: If True, changes will be tracked as revisions
+            change_author: Author name for tracked changes (required if track_changes=True)
             
         Returns:
             Status message indicating success or failure
         """
         return footnote_tools.customize_footnote_style(
-            filename, numbering_format, start_number, font_name, font_size
+            filename, numbering_format, start_number, font_name, font_size, track_changes, change_author
         )
     
     @mcp.tool()
     def delete_footnote_from_document(filename: str, footnote_id: int = None,
-                                     search_text: str = None, output_filename: str = None):
+                                     search_text: str = None, output_filename: str = None,
+                                     track_changes: bool = False, change_author: str = ""):
         """Delete a footnote from a Word document.
         
         Args:
@@ -679,14 +750,15 @@ def register_tools():
             Status message indicating success or failure
         """
         return footnote_tools.delete_footnote_from_document(
-            filename, footnote_id, search_text, output_filename
+            filename, footnote_id, search_text, output_filename, track_changes, change_author
         )
     
     # Robust footnote tools - Production-ready with comprehensive validation
     @mcp.tool()
     def add_footnote_robust(filename: str, search_text: str = None, 
                            paragraph_index: int = None, footnote_text: str = "",
-                           validate_location: bool = True, auto_repair: bool = False):
+                           validate_location: bool = True, auto_repair: bool = False,
+                           track_changes: bool = False, change_author: str = ""):
         """Add footnote with robust validation and Word compliance.
         
         Args:
@@ -702,7 +774,7 @@ def register_tools():
         """
         return footnote_tools.add_footnote_robust_tool(
             filename, search_text, paragraph_index, footnote_text, 
-            validate_location, auto_repair
+            validate_location, auto_repair, track_changes, change_author
         )
     
     @mcp.tool()
@@ -878,7 +950,8 @@ def register_tools():
     # New table column width tools
     @mcp.tool()
     def set_table_column_width(filename: str, table_index: int, col_index: int, 
-                              width: float, width_type: str = "points"):
+                              width: float, width_type: str = "points",
+                              track_changes: bool = False, change_author: str = ""):
         """Set the width of a specific table column.
         
         Args:
@@ -891,11 +964,12 @@ def register_tools():
         Returns:
             Status message indicating success or failure
         """
-        return format_tools.set_table_column_width(filename, table_index, col_index, width, width_type)
+        return format_tools.set_table_column_width(filename, table_index, col_index, width, width_type, track_changes, change_author)
 
     @mcp.tool()
     def set_table_column_widths(filename: str, table_index: int, widths: list, 
-                               width_type: str = "points"):
+                               width_type: str = "points",
+                               track_changes: bool = False, change_author: str = ""):
         """Set the widths of multiple table columns.
         
         Args:
@@ -907,11 +981,12 @@ def register_tools():
         Returns:
             Status message indicating success or failure
         """
-        return format_tools.set_table_column_widths(filename, table_index, widths, width_type)
+        return format_tools.set_table_column_widths(filename, table_index, widths, width_type, track_changes, change_author)
 
     @mcp.tool()
     def set_table_width(filename: str, table_index: int, width: float, 
-                       width_type: str = "points"):
+                       width_type: str = "points",
+                       track_changes: bool = False, change_author: str = ""):
         """Set the overall width of a table.
         
         Args:
@@ -923,10 +998,11 @@ def register_tools():
         Returns:
             Status message indicating success or failure
         """
-        return format_tools.set_table_width(filename, table_index, width, width_type)
+        return format_tools.set_table_width(filename, table_index, width, width_type, track_changes, change_author)
 
     @mcp.tool()
-    def auto_fit_table_columns(filename: str, table_index: int):
+    def auto_fit_table_columns(filename: str, table_index: int,
+                               track_changes: bool = False, change_author: str = ""):
         """Set table columns to auto-fit based on content.
         
         Args:
@@ -936,14 +1012,15 @@ def register_tools():
         Returns:
             Status message indicating success or failure
         """
-        return format_tools.auto_fit_table_columns(filename, table_index)
+        return format_tools.auto_fit_table_columns(filename, table_index, track_changes, change_author)
 
     # New table cell text formatting and padding tools
     @mcp.tool()
     def format_table_cell_text(filename: str, table_index: int, row_index: int, col_index: int,
                                text_content: str = None, bold: bool = None, italic: bool = None,
                                underline: bool = None, color: str = None, font_size: int = None,
-                               font_name: str = None):
+                               font_name: str = None,
+                               track_changes: bool = False, change_author: str = ""):
         """Format text within a specific table cell.
         
         Args:
@@ -963,12 +1040,14 @@ def register_tools():
             Status message indicating success or failure
         """
         return format_tools.format_table_cell_text(filename, table_index, row_index, col_index,
-                                                   text_content, bold, italic, underline, color, font_size, font_name)
+                                                   text_content, bold, italic, underline, color, font_size, font_name,
+                                                   track_changes, change_author)
 
     @mcp.tool()
     def set_table_cell_padding(filename: str, table_index: int, row_index: int, col_index: int,
                                top: float = None, bottom: float = None, left: float = None, 
-                               right: float = None, unit: str = "points"):
+                               right: float = None, unit: str = "points",
+                               track_changes: bool = False, change_author: str = ""):
         """Set padding/margins for a specific table cell.
         
         Args:
@@ -986,7 +1065,7 @@ def register_tools():
             Status message indicating success or failure
         """
         return format_tools.set_table_cell_padding(filename, table_index, row_index, col_index,
-                                                   top, bottom, left, right, unit)
+                                                   top, bottom, left, right, unit, track_changes, change_author)
 
 
 

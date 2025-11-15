@@ -24,15 +24,22 @@ from word_document_server.core.footnotes import (
     validate_document_footnotes,
     add_footnote_at_paragraph_end  # Compatibility function
 )
+from word_document_server.utils.track_changes_utils import (
+    open_document_with_track_changes, close_document_with_track_changes,
+    check_pywin32_available, get_track_changes_error_message
+)
 
 
-async def add_footnote_to_document(filename: str, paragraph_index: int, footnote_text: str) -> str:
+async def add_footnote_to_document(filename: str, paragraph_index: int, footnote_text: str,
+                                   track_changes: bool = False, change_author: str = "") -> str:
     """Add a footnote to a specific paragraph in a Word document.
     
     Args:
         filename: Path to the Word document
         paragraph_index: Index of the paragraph to add footnote to (0-based)
         footnote_text: Text content of the footnote
+        track_changes: If True, changes will be tracked as revisions
+        change_author: Author name for tracked changes (required if track_changes=True)
     """
     filename = ensure_docx_extension(filename)
     
@@ -49,6 +56,37 @@ async def add_footnote_to_document(filename: str, paragraph_index: int, footnote
     is_writeable, error_message = check_file_writeable(filename)
     if not is_writeable:
         return f"Cannot modify document: {error_message}. Consider creating a copy first."
+
+    # Check if Track Changes is requested
+    if track_changes:
+        if not check_pywin32_available():
+            return get_track_changes_error_message()
+        
+        try:
+            word, doc, saved_state = open_document_with_track_changes(filename, change_author)
+            
+            # Убеждаемся, что Track Changes включен
+            if not doc.TrackRevisions:
+                doc.TrackRevisions = True
+            
+            # Устанавливаем автора изменений
+            if change_author:
+                word.UserName = change_author
+            
+            # Validate paragraph index (COM API uses 1-based indexing)
+            if paragraph_index < 0 or paragraph_index >= doc.Paragraphs.Count:
+                close_document_with_track_changes(word, doc, saved_state, save_changes=False)
+                return f"Invalid paragraph index. Document has {doc.Paragraphs.Count} paragraphs (0-{doc.Paragraphs.Count-1})."
+            
+            para = doc.Paragraphs(paragraph_index + 1)
+            # Add footnote via COM API
+            # Добавление сноски создаст ревизию при включенном TrackRevisions
+            footnote = doc.Footnotes.Add(para.Range, footnote_text)
+            
+            close_document_with_track_changes(word, doc, saved_state)
+            return f"Footnote added to paragraph {paragraph_index} with Track Changes."
+        except Exception as e:
+            return f"Failed to add footnote with Track Changes: {str(e)}"
     
     try:
         doc = Document(filename)
@@ -96,7 +134,8 @@ async def add_footnote_to_document(filename: str, paragraph_index: int, footnote
         return f"Failed to add footnote: {str(e)}"
 
 
-async def add_endnote_to_document(filename: str, paragraph_index: int, endnote_text: str) -> str:
+async def add_endnote_to_document(filename: str, paragraph_index: int, endnote_text: str,
+                                  track_changes: bool = False, change_author: str = "") -> str:
     """Add an endnote to a specific paragraph in a Word document.
     
     Args:
@@ -156,7 +195,8 @@ async def add_endnote_to_document(filename: str, paragraph_index: int, endnote_t
         return f"Failed to add endnote: {str(e)}"
 
 
-async def convert_footnotes_to_endnotes_in_document(filename: str) -> str:
+async def convert_footnotes_to_endnotes_in_document(filename: str,
+                                                    track_changes: bool = False, change_author: str = "") -> str:
     """Convert all footnotes to endnotes in a Word document.
     
     Args:
@@ -241,7 +281,8 @@ async def convert_footnotes_to_endnotes_in_document(filename: str) -> str:
 
 
 async def add_footnote_after_text(filename: str, search_text: str, footnote_text: str, 
-                                 output_filename: Optional[str] = None) -> str:
+                                 output_filename: Optional[str] = None,
+                                 track_changes: bool = False, change_author: str = "") -> str:
     """Add a footnote after specific text in a Word document with proper formatting.
     
     This enhanced function ensures proper superscript formatting by managing styles at the XML level.
@@ -278,7 +319,8 @@ async def add_footnote_after_text(filename: str, search_text: str, footnote_text
 
 
 async def add_footnote_before_text(filename: str, search_text: str, footnote_text: str, 
-                                  output_filename: Optional[str] = None) -> str:
+                                  output_filename: Optional[str] = None,
+                                  track_changes: bool = False, change_author: str = "") -> str:
     """Add a footnote before specific text in a Word document with proper formatting.
     
     This enhanced function ensures proper superscript formatting by managing styles at the XML level.
@@ -315,7 +357,8 @@ async def add_footnote_before_text(filename: str, search_text: str, footnote_tex
 
 
 async def add_footnote_enhanced(filename: str, paragraph_index: int, footnote_text: str,
-                               output_filename: Optional[str] = None) -> str:
+                               output_filename: Optional[str] = None,
+                               track_changes: bool = False, change_author: str = "") -> str:
     """Enhanced version of add_footnote_to_document with proper superscript formatting.
     
     Now uses the robust implementation for better reliability.
@@ -358,7 +401,8 @@ async def add_footnote_enhanced(filename: str, paragraph_index: int, footnote_te
 
 async def customize_footnote_style(filename: str, numbering_format: str = "1, 2, 3", 
                                   start_number: int = 1, font_name: Optional[str] = None,
-                                  font_size: Optional[int] = None) -> str:
+                                  font_size: Optional[int] = None,
+                                  track_changes: bool = False, change_author: str = "") -> str:
     """Customize footnote numbering and formatting in a Word document.
     
     Args:
@@ -417,7 +461,8 @@ async def customize_footnote_style(filename: str, numbering_format: str = "1, 2,
 
 async def delete_footnote_from_document(filename: str, footnote_id: Optional[int] = None,
                                        search_text: Optional[str] = None, 
-                                       output_filename: Optional[str] = None) -> str:
+                                       output_filename: Optional[str] = None,
+                                       track_changes: bool = False, change_author: str = "") -> str:
     """Delete a footnote from a Word document.
     
     You can identify the footnote to delete either by:
@@ -427,6 +472,8 @@ async def delete_footnote_from_document(filename: str, footnote_id: Optional[int
     Args:
         filename: Path to the Word document
         footnote_id: Optional ID of the footnote to delete (1-based)
+        track_changes: If True, changes will be tracked as revisions
+        change_author: Author name for tracked changes (required if track_changes=True)
         search_text: Optional text to search near the footnote reference
         output_filename: Optional output filename (if None, modifies in place)
     """
@@ -465,7 +512,9 @@ async def add_footnote_robust_tool(
     paragraph_index: Optional[int] = None,
     footnote_text: str = "",
     validate_location: bool = True,
-    auto_repair: bool = False
+    auto_repair: bool = False,
+    track_changes: bool = False,
+    change_author: str = ""
 ) -> Dict[str, Any]:
     """
     Add a footnote with robust validation and error handling.
@@ -526,7 +575,9 @@ async def delete_footnote_robust_tool(
     filename: str,
     footnote_id: Optional[int] = None,
     search_text: Optional[str] = None,
-    clean_orphans: bool = True
+    clean_orphans: bool = True,
+    track_changes: bool = False,
+    change_author: str = ""
 ) -> Dict[str, Any]:
     """
     Delete a footnote with comprehensive cleanup.
@@ -620,7 +671,9 @@ async def validate_footnotes_tool(filename: str) -> Dict[str, Any]:
 async def add_footnote_to_document_robust(
     filename: str, 
     paragraph_index: int, 
-    footnote_text: str
+    footnote_text: str,
+    track_changes: bool = False,
+    change_author: str = ""
 ) -> str:
     """
     Robust version of add_footnote_to_document.
@@ -638,7 +691,9 @@ async def add_footnote_after_text_robust(
     filename: str,
     search_text: str,
     footnote_text: str,
-    output_filename: Optional[str] = None
+    output_filename: Optional[str] = None,
+    track_changes: bool = False,
+    change_author: str = ""
 ) -> str:
     """
     Robust version of add_footnote_after_text.
@@ -663,7 +718,9 @@ async def add_footnote_before_text_robust(
     filename: str,
     search_text: str,
     footnote_text: str,
-    output_filename: Optional[str] = None
+    output_filename: Optional[str] = None,
+    track_changes: bool = False,
+    change_author: str = ""
 ) -> str:
     """
     Robust version of add_footnote_before_text.
