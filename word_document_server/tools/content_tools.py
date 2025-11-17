@@ -1059,7 +1059,7 @@ async def insert_numbered_list_near_text_tool(filename: str, target_text: str = 
     return insert_numbered_list_near_text(filename, target_text, list_items, position, target_paragraph_index, bullet_type)
 
 async def insert_line_or_paragraph_near_text_tool(filename: str, target_text: str = None, line_text: str = "", position: str = 'after', line_style: str = None, target_paragraph_index: int = None,
-                                                   track_changes: bool = False, change_author: str = "") -> str:
+                                                   target_occurrence: int = 1, track_changes: bool = False, change_author: str = "") -> str:
     """Insert a new line or paragraph (with specified or matched style) before or after the target paragraph. Specify by text or paragraph index.
     
     Args:
@@ -1069,6 +1069,7 @@ async def insert_line_or_paragraph_near_text_tool(filename: str, target_text: st
         position: Position relative to target ('before' or 'after', default: 'after')
         line_style: Style name for the new line (optional, will match target style if not provided)
         target_paragraph_index: Index of the target paragraph (optional, alternative to target_text)
+        target_occurrence: When using target_text, select this occurrence (1-based) if there are multiple matches
         track_changes: If True, changes will be tracked as revisions
         change_author: Author name for tracked changes (required if track_changes=True)
     """
@@ -1098,24 +1099,86 @@ async def insert_line_or_paragraph_near_text_tool(filename: str, target_text: st
             if change_author:
                 word.UserName = change_author
             
+            # Validate occurrence
+            if target_text and target_occurrence is not None and target_occurrence < 1:
+                close_document_with_track_changes(word, doc, saved_state, save_changes=False)
+                return "target_occurrence must be a positive integer when using target_text."
+            
             # Find target paragraph
             target_para = None
             anchor_index = None
             
             if target_paragraph_index is not None:
-                # Find by index (COM API uses 1-based indexing)
-                if target_paragraph_index < 0 or target_paragraph_index >= doc.Paragraphs.Count:
+                # IMPORTANT: Indices in COM API may differ from python-docx due to tables
+                # Solution: Get paragraph text from python-docx first, then find it in COM API by text
+                try:
+                    from docx import Document as DocxDocument
+                    docx_doc = DocxDocument(filename)
+                    if target_paragraph_index < 0 or target_paragraph_index >= len(docx_doc.paragraphs):
+                        close_document_with_track_changes(word, doc, saved_state, save_changes=False)
+                        return f"Invalid target_paragraph_index: {target_paragraph_index}. Document has {len(docx_doc.paragraphs)} paragraphs (0-{len(docx_doc.paragraphs)-1})."
+                    
+                    # Get the target paragraph text from python-docx
+                    target_para_docx = docx_doc.paragraphs[target_paragraph_index]
+                    target_para_text = target_para_docx.text.strip()
+                    
+                    if not target_para_text:
+                        # If paragraph is empty, try to find by position using Range
+                        # This is a fallback for empty paragraphs
+                        # Count paragraphs in COM API, skipping TOC and table paragraphs
+                        para_count = 0
+                        for i in range(1, doc.Paragraphs.Count + 1):
+                            para = doc.Paragraphs(i)
+                            try:
+                                style_name = para.Style.NameLocal if para.Style else ""
+                                if style_name and style_name.lower().startswith("toc"):
+                                    continue
+                                # Check if paragraph is in a table
+                                if para.Range.Information(12):  # wdWithInTable = 12
+                                    continue
+                                if para_count == target_paragraph_index:
+                                    target_para = para
+                                    anchor_index = target_paragraph_index
+                                    break
+                                para_count += 1
+                            except:
+                                para_count += 1
+                    else:
+                        # Find paragraph by text in COM API, skipping TOC paragraphs
+                        for i in range(1, doc.Paragraphs.Count + 1):
+                            para = doc.Paragraphs(i)
+                            # Skip TOC paragraphs
+                            try:
+                                style_name = para.Style.NameLocal if para.Style else ""
+                                if style_name and style_name.lower().startswith("toc"):
+                                    continue
+                                # Skip paragraphs inside tables (they have different indexing)
+                                if para.Range.Information(12):  # wdWithInTable = 12
+                                    continue
+                            except:
+                                pass
+                            
+                            para_text = para.Range.Text.strip()
+                            # Match by exact text or by containing the text
+                            if para_text == target_para_text or target_para_text in para_text:
+                                target_para = para
+                                anchor_index = target_paragraph_index
+                                break
+                    
+                    if target_para is None:
+                        close_document_with_track_changes(word, doc, saved_state, save_changes=False)
+                        return f"Target paragraph at index {target_paragraph_index} not found in COM API. Text: '{target_para_text[:50]}...'"
+                except Exception as e:
                     close_document_with_track_changes(word, doc, saved_state, save_changes=False)
-                    return f"Invalid target_paragraph_index: {target_paragraph_index}. Document has {doc.Paragraphs.Count} paragraphs (0-{doc.Paragraphs.Count-1})."
-                target_para = doc.Paragraphs(target_paragraph_index + 1)
-                anchor_index = target_paragraph_index
+                    return f"Failed to find target paragraph by index: {str(e)}"
             else:
                 # Find by text
                 if not target_text:
                     close_document_with_track_changes(word, doc, saved_state, save_changes=False)
                     return "Either target_text or target_paragraph_index must be provided."
                 
-                # Search through paragraphs, skipping TOC
+                match_count = 0
+                # Search through paragraphs, skipping TOC and table paragraphs
                 for i in range(1, doc.Paragraphs.Count + 1):
                     para = doc.Paragraphs(i)
                     # Skip TOC paragraphs
@@ -1123,18 +1186,37 @@ async def insert_line_or_paragraph_near_text_tool(filename: str, target_text: st
                         style_name = para.Style.NameLocal if para.Style else ""
                         if style_name and style_name.lower().startswith("toc"):
                             continue
+                        # Skip paragraphs inside tables
+                        if para.Range.Information(12):  # wdWithInTable = 12
+                            continue
                     except:
                         pass
-                    
                     para_text = para.Range.Text
                     if target_text in para_text:
-                        target_para = para
-                        anchor_index = i - 1  # Convert to 0-based
-                        break
+                        match_count += 1
+                        if match_count == target_occurrence:
+                            target_para = para
+                            # Try to find the index in python-docx for reporting
+                            try:
+                                from docx import Document as DocxDocument
+                                docx_doc = DocxDocument(filename)
+                                match_count_docx = 0
+                                for idx, p in enumerate(docx_doc.paragraphs):
+                                    if target_text in p.text:
+                                        match_count_docx += 1
+                                        if match_count_docx == target_occurrence:
+                                            anchor_index = idx
+                                            break
+                            except:
+                                anchor_index = None
+                            break
                 
                 if target_para is None:
                     close_document_with_track_changes(word, doc, saved_state, save_changes=False)
-                    return f"Target paragraph not found (by text '{target_text}'). (TOC paragraphs are skipped in text search)"
+                    occurrence_msg = ""
+                    if match_count > 0:
+                        occurrence_msg = f" Only {match_count} occurrence(s) found but target_occurrence={target_occurrence}."
+                    return f"Target paragraph not found (by text '{target_text}'). (TOC paragraphs and table paragraphs are skipped in text search){occurrence_msg}"
             
             # Determine style: use provided or match target
             style_name = None
@@ -1191,7 +1273,7 @@ async def insert_line_or_paragraph_near_text_tool(filename: str, target_text: st
             return f"Failed to insert line/paragraph with Track Changes: {str(e)}"
     
     # Fall back to python-docx approach if track_changes=False
-    return insert_line_or_paragraph_near_text(filename, target_text, line_text, position, line_style, target_paragraph_index)
+    return insert_line_or_paragraph_near_text(filename, target_text, line_text, position, line_style, target_paragraph_index, target_occurrence)
 
 async def replace_paragraph_block_below_header_tool(filename: str, header_text: str, new_paragraphs: list, detect_block_end_fn=None,
                                                     track_changes: bool = False, change_author: str = "") -> str:

@@ -240,7 +240,8 @@ def insert_header_near_text(doc_path: str, target_text: str = None, header_title
         return f"Failed to insert header: {str(e)}"
 
 
-def insert_line_or_paragraph_near_text(doc_path: str, target_text: str = None, line_text: str = "", position: str = 'after', line_style: str = None, target_paragraph_index: int = None) -> str:
+def insert_line_or_paragraph_near_text(doc_path: str, target_text: str = None, line_text: str = "", position: str = 'after', line_style: str = None, target_paragraph_index: int = None,
+                                       target_occurrence: int = 1) -> str:
     """
     Insert a new line or paragraph (with specified or matched style) before or after the target paragraph.
     You can specify the target by text (first match) or by paragraph index.
@@ -260,16 +261,24 @@ def insert_line_or_paragraph_near_text(doc_path: str, target_text: str = None, l
             para = doc.paragraphs[target_paragraph_index]
             found = True
         else:
+            if target_text and target_occurrence is not None and target_occurrence < 1:
+                return "target_occurrence must be a positive integer when using target_text."
+            match_count = 0
             for i, p in enumerate(doc.paragraphs):
                 # Skip TOC paragraphs
                 if p.style and p.style.name.lower().startswith("toc"):
                     continue
                 if target_text and target_text in p.text:
-                    para = p
-                    found = True
-                    break
+                    match_count += 1
+                    if match_count == target_occurrence:
+                        para = p
+                        found = True
+                        break
         if not found or para is None:
-            return f"Target paragraph not found (by index or text). (TOC paragraphs are skipped in text search)"
+            occurrence_msg = ""
+            if match_count > 0 and target_occurrence:
+                occurrence_msg = f" Only {match_count} occurrence(s) found but target_occurrence={target_occurrence}."
+            return f"Target paragraph not found (by index or text). (TOC paragraphs are skipped in text search){occurrence_msg}"
         # Save anchor index before insertion
         if target_paragraph_index is not None:
             anchor_index = target_paragraph_index

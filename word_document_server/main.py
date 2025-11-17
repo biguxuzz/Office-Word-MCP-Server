@@ -6,6 +6,8 @@ Supports multiple transports: stdio, sse, and streamable-http using standalone F
 
 import os
 import sys
+import platform
+import asyncio
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -13,6 +15,19 @@ print("Loading configuration from .env file...")
 load_dotenv()
 # Set required environment variable for FastMCP 2.8.1+
 os.environ.setdefault('FASTMCP_LOG_LEVEL', 'INFO')
+
+# Fix для Windows: настройка event loop policy
+if platform.system() == 'Windows':
+    # Подавление ошибок ConnectionResetError на Windows
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    
+    # Альтернативно для Python 3.8+:
+    # asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+    
+    # Игнорирование предупреждений о закрытии соединений
+    import warnings
+    warnings.filterwarnings("ignore", category=ResourceWarning)
+
 from fastmcp import FastMCP
 from word_document_server.tools import (
     document_tools,
@@ -200,7 +215,7 @@ def register_tools():
     
     @mcp.tool()
     def insert_line_or_paragraph_near_text(filename: str, target_text: str = None, line_text: str = None, position: str = 'after', line_style: str = None, target_paragraph_index: int = None,
-                                           track_changes: bool = False, change_author: str = ""):
+                                           target_occurrence: int = 1, track_changes: bool = False, change_author: str = ""):
         """Insert a new line or paragraph (with specified or matched style) before or after the target paragraph.
         
         Args:
@@ -210,13 +225,14 @@ def register_tools():
             position: Position relative to target ('before' or 'after', default: 'after')
             line_style: Style name for the new line (optional, will match target style if not provided)
             target_paragraph_index: Index of the target paragraph (optional, alternative to target_text)
+            target_occurrence: When using target_text, select this occurrence (1-based) if there are multiple matches
             track_changes: If True, changes will be tracked as revisions
             change_author: Author name for tracked changes (required if track_changes=True)
             
         Returns:
             Status message indicating success or failure
         """
-        return content_tools.insert_line_or_paragraph_near_text_tool(filename, target_text, line_text, position, line_style, target_paragraph_index, track_changes, change_author)
+        return content_tools.insert_line_or_paragraph_near_text_tool(filename, target_text, line_text, position, line_style, target_paragraph_index, target_occurrence, track_changes, change_author)
     
     @mcp.tool()
     def insert_numbered_list_near_text(filename: str, target_text: str = None, list_items: list = None, position: str = 'after', target_paragraph_index: int = None, bullet_type: str = 'bullet',
@@ -1096,30 +1112,50 @@ def run_server():
         elif transport_type == 'streamable-http':
             # Run with streamable HTTP transport
             print(f"Server running on streamable-http transport at http://{config['host']}:{config['port']}{config['path']}")
-            mcp.run(
-                transport='streamable-http',
-                host=config['host'],
-                port=config['port'],
-                path=config['path']
-            )
+            
+            # Дополнительные настройки для uvicorn на Windows
+            uvicorn_config = {
+                'transport': 'streamable-http',
+                'host': config['host'],
+                'port': config['port'],
+                'path': config['path']
+            }
+            
+            # Для Windows добавляем специальные параметры
+            if platform.system() == 'Windows':
+                print("Applying Windows-specific optimizations...")
+                # Эти настройки помогут с ConnectionResetError
+                os.environ['PYTHONASYNCIODEBUG'] = '0'  # Отключаем отладку asyncio
+            
+            mcp.run(**uvicorn_config)
             
         elif transport_type == 'sse':
             # Run with SSE transport
             print(f"Server running on SSE transport at http://{config['host']}:{config['port']}{config['sse_path']}")
-            mcp.run(
-                transport='sse',
-                host=config['host'],
-                port=config['port'],
-                path=config['sse_path']
-            )
+            
+            sse_config = {
+                'transport': 'sse',
+                'host': config['host'],
+                'port': config['port'],
+                'path': config['sse_path']
+            }
+            
+            # Для Windows добавляем специальные параметры
+            if platform.system() == 'Windows':
+                print("Applying Windows-specific optimizations...")
+                os.environ['PYTHONASYNCIODEBUG'] = '0'
+            
+            mcp.run(**sse_config)
             
     except KeyboardInterrupt:
         print("\nShutting down server...")
+    except ConnectionResetError:
+        # Игнорируем ConnectionResetError при завершении
+        print("\nConnection reset during shutdown (normal on Windows)")
     except Exception as e:
         print(f"Error starting server: {e}")
-        if config['debug']:
-            import traceback
-            traceback.print_exc()
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
     
     return mcp
